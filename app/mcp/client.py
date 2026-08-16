@@ -45,6 +45,8 @@ async def main():
             print("\nMultiply result:")
             print(result)
 
+
+
             github_result = await session.call_tool(
                 "github.get_repository",
                 arguments={
@@ -55,6 +57,19 @@ async def main():
 
             print("\nGitHub repository:")
             print(github_result)
+
+            search_result = await session.call_tool(
+                "github.search_issues",
+                arguments={
+                    "owner": "Dyresty",
+                    "repo": "enterprise-mcp-gateway",
+                    "query": "authentication",
+                    "state": "open",
+                },
+            )
+
+            print("\nGitHub issue search:")
+            print(search_result)
 
 
 if __name__ == "__main__":

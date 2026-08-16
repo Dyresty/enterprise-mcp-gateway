@@ -71,6 +71,51 @@ def register_tools():
         rate_limit_per_minute=30,
     )
 
+    registry.register_tool(
+        name="github.search_issues",
+        description="Search GitHub issues in a repository using a text query and issue state.",
+        server_name="Enterprise MCP Gateway",
+        input_schema={
+            "type": "object",
+            "properties": {
+                "owner": {
+                    "type": "string"
+                },
+                "repo": {
+                    "type": "string"
+                },
+                "query": {
+                    "type": "string"
+                },
+                "state": {
+                    "type": "string",
+                    "enum": ["open", "closed"]
+                },
+                "page": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 10,
+                    "default": 1,
+                },
+                "per_page": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 100,
+                    "default": 20,
+                }
+            },
+            "required": ["owner", "repo", "query"],
+        },
+        output_schema={
+            "type": "object"
+        },
+        required_role="analyst",
+        risk_level="READ",
+        timeout_seconds=10,
+        rate_limit_per_minute=30,
+    )
+
+
     print("Tools registered successfully.")
 
 
