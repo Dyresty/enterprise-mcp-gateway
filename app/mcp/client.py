@@ -45,6 +45,17 @@ async def main():
             print("\nMultiply result:")
             print(result)
 
+            github_result = await session.call_tool(
+                "github.get_repository",
+                arguments={
+                    "owner": "Dyresty",
+                    "repo": "enterprise-hybrid-rag",
+                },
+            )
+
+            print("\nGitHub repository:")
+            print(github_result)
+
 
 if __name__ == "__main__":
     asyncio.run(main())

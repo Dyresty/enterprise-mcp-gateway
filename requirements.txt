@@ -3,3 +3,4 @@ uvicorn[standard]
 mcp
 psycopg[binary]
 python-dotenv
+httpx

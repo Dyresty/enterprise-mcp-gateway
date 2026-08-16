@@ -15,5 +15,6 @@ class Settings:
     POSTGRES_USER: str = os.getenv("POSTGRES_USER", "mcp_user")
     POSTGRES_PASSWORD: str = os.getenv("POSTGRES_PASSWORD", "")
 
+    GITHUB_TOKEN: str = os.getenv("GITHUB_TOKEN", "")
 
 settings = Settings()
