@@ -89,7 +89,8 @@ def register_tools():
                 },
                 "state": {
                     "type": "string",
-                    "enum": ["open", "closed"]
+                    "enum": ["open", "closed", "all"],
+                    "default": "open",
                 },
                 "page": {
                     "type": "integer",
@@ -144,6 +145,35 @@ def register_tools():
         rate_limit_per_minute=30,
     )
 
+    registry.register_tool(
+        name="github.list_repositories",
+        description="List repositories accessible to the authenticated GitHub account.",
+        server_name="Enterprise MCP Gateway",
+        input_schema={
+            "type": "object",
+            "properties": {
+                "page": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 10,
+                    "default": 1,
+                },
+                "per_page": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 100,
+                    "default": 30,
+                },
+            },
+        },
+        output_schema={
+            "type": "object",
+        },
+        required_role="analyst",
+        risk_level="READ",
+        timeout_seconds=10,
+        rate_limit_per_minute=30,
+    )
 
     print("Tools registered successfully.")
 

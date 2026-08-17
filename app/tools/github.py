@@ -4,14 +4,31 @@ from app.models.github import (
     GitHubIssueSearchRequest,
     GitHubIssueSearchResponse,
     GitHubIssue,
+    GitHubRepositoryRequest,
+    GitHubRepository,
+    GitHubRepositoryListRequest,
+    GitHubRepositoryListResponse,
 )
 
 github_client = GitHubClient()
 
 
-def get_repository(owner: str, repo: str) -> dict:
-    return github_client.get_repository(owner, repo)
+def get_repository(
+    owner: str,
+    repo: str,
+) -> GitHubRepository:
 
+    request = GitHubRepositoryRequest(
+        owner=owner,
+        repo=repo,
+    )
+
+    result = github_client.get_repository(
+        owner=request.owner,
+        repo=request.repo,
+    )
+
+    return GitHubRepository(**result)
 
 def get_issue(
     owner: str,
@@ -61,3 +78,20 @@ def search_issues(
     )
 
     return GitHubIssueSearchResponse(**result)
+
+def list_repositories(
+    page: int = 1,
+    per_page: int = 30,
+) -> GitHubRepositoryListResponse:
+
+    request = GitHubRepositoryListRequest(
+        page=page,
+        per_page=per_page,
+    )
+
+    result = github_client.list_repositories(
+        page=request.page,
+        per_page=request.per_page,
+    )
+
+    return GitHubRepositoryListResponse(**result)

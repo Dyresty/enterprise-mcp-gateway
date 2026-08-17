@@ -31,3 +31,31 @@ class GitHubIssue(BaseModel):
 class GitHubIssueSearchResponse(BaseModel):
     total_count: int
     issues: list[GitHubIssue]
+
+class GitHubRepositoryRequest(BaseModel):
+    owner: str = Field(min_length=1)
+    repo: str = Field(min_length=1)
+
+class GitHubRepository(BaseModel):
+    name: str
+    full_name: str
+    description: str | None
+    language: str | None
+    default_branch: str
+    visibility: str
+    open_issues: int
+    stars: int
+    forks: int
+    created_at: str
+    updated_at: str
+
+
+class GitHubRepositoryListRequest(BaseModel):
+    page: int = Field(default=1, ge=1, le=10)
+    per_page: int = Field(default=30, ge=1, le=100)
+
+
+class GitHubRepositoryListResponse(BaseModel):
+    repositories: list[GitHubRepository]
+    page: int
+    per_page: int

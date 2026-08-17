@@ -9,6 +9,7 @@ from app.tools.github import (
     get_repository,
     get_issue,
     search_issues,
+    list_repositories,
 )
 
 mcp = FastMCP("Enterprise MCP Gateway")
@@ -104,6 +105,27 @@ def github_search_issues(
         repo=repo,
         query=query,
         state=state,
+        page=page,
+        per_page=per_page,
+    )
+
+@mcp.tool(name="github.list_repositories")
+def github_list_repositories(
+    page: int = 1,
+    per_page: int = 30,
+) -> dict:
+    """
+    List repositories accessible to the authenticated GitHub account.
+    """
+
+    tool = registry.get_tool("github.list_repositories")
+
+    if tool is None:
+        raise ValueError(
+            "Tool 'github.list_repositories' is not registered or is disabled."
+        )
+
+    return list_repositories(
         page=page,
         per_page=per_page,
     )

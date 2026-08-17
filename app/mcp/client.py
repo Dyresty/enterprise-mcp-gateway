@@ -84,6 +84,17 @@ async def main():
             print("\nGitHub issue:")
             print(get_issue_result)
 
+            list_result = await session.call_tool(
+                "github.list_repositories",
+                arguments={
+                    "page": 1,
+                    "per_page": 5,
+                },
+            )
+
+            print("\nGitHub repositories:")
+            print(list_result)
+
 
 if __name__ == "__main__":
     asyncio.run(main())

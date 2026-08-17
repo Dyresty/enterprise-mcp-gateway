@@ -132,3 +132,57 @@ class GitHubClient:
             "total_count": len(issues),
             "issues": issues,
         }
+
+
+    def list_repositories(
+        self,
+        page: int = 1,
+        per_page: int = 30,
+    ) -> dict:
+
+        url = f"{self.BASE_URL}/user/repos"
+
+        params = {
+            "page": page,
+            "per_page": per_page,
+        }
+
+        response = httpx.get(
+            url,
+            headers=self.headers,
+            params=params,
+            timeout=10.0,
+        )
+
+        if response.status_code != 200:
+            print("GitHub response:")
+            print(response.text)
+
+        response.raise_for_status()
+
+        data = response.json()
+
+        repositories = []
+
+        for item in data:
+            repositories.append(
+                {
+                    "name": item["name"],
+                    "full_name": item["full_name"],
+                    "description": item["description"],
+                    "language": item["language"],
+                    "default_branch": item["default_branch"],
+                    "visibility": item["visibility"],
+                    "open_issues": item["open_issues_count"],
+                    "stars": item["stargazers_count"],
+                    "forks": item["forks_count"],
+                    "created_at": item["created_at"],
+                    "updated_at": item["updated_at"],
+                }
+            )
+
+        return {
+            "repositories": repositories,
+            "page": page,
+            "per_page": per_page,
+        }
