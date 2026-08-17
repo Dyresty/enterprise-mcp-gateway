@@ -5,7 +5,11 @@ from mcp.server.fastmcp import FastMCP
 from app.gateway.tool_registry import ToolRegistry
 from app.tools.calculator import add, multiply
 
-from app.tools.github import get_repository, search_issues
+from app.tools.github import (
+    get_repository,
+    get_issue,
+    search_issues,
+)
 
 mcp = FastMCP("Enterprise MCP Gateway")
 
@@ -52,6 +56,29 @@ def github_get_repository(owner: str, repo: str) -> dict:
 
     return get_repository(owner, repo)
 
+@mcp.tool(name="github.get_issue")
+def github_get_issue(
+    owner: str,
+    repo: str,
+    issue_number: int,
+) -> dict:
+    """
+    Retrieve a specific GitHub issue by issue number.
+    """
+
+    tool = registry.get_tool("github.get_issue")
+
+    if tool is None:
+        raise ValueError(
+            "Tool 'github.get_issue' is not registered or is disabled."
+        )
+
+    return get_issue(
+        owner=owner,
+        repo=repo,
+        issue_number=issue_number,
+    )
+
 @mcp.tool(name="github.search_issues")
 def github_search_issues(
     owner: str,
@@ -80,7 +107,6 @@ def github_search_issues(
         page=page,
         per_page=per_page,
     )
-
 
 if __name__ == "__main__":
     mcp.run()

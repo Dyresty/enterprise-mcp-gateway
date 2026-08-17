@@ -44,6 +44,36 @@ class GitHubClient:
             "updated_at": data["updated_at"],
         }
 
+    def get_issue(
+        self,
+        owner: str,
+        repo: str,
+        issue_number: int,
+    ) -> dict:
+        url = (
+            f"{self.BASE_URL}/repos/"
+            f"{owner}/{repo}/issues/{issue_number}"
+        )
+
+        response = httpx.get(
+            url,
+            headers=self.headers,
+            timeout=10.0,
+        )
+
+        response.raise_for_status()
+
+        data = response.json()
+
+        return {
+            "number": data["number"],
+            "title": data["title"],
+            "state": data["state"],
+            "url": data["html_url"],
+            "created_at": data["created_at"],
+            "updated_at": data["updated_at"],
+        }
+
     def search_issues(
         self,
         owner: str,

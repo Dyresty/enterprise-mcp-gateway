@@ -13,6 +13,12 @@ class GitHubIssueSearchRequest(BaseModel):
     per_page: int = Field(default=20, ge=1, le=100)
 
 
+class GitHubIssueRequest(BaseModel):
+    owner: str = Field(min_length=1)
+    repo: str = Field(min_length=1)
+    issue_number: int = Field(ge=1)
+
+
 class GitHubIssue(BaseModel):
     number: int
     title: str

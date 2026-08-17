@@ -1,7 +1,9 @@
 from app.integrations.github.client import GitHubClient
 from app.models.github import (
+    GitHubIssueRequest,
     GitHubIssueSearchRequest,
     GitHubIssueSearchResponse,
+    GitHubIssue,
 )
 
 github_client = GitHubClient()
@@ -9,6 +11,27 @@ github_client = GitHubClient()
 
 def get_repository(owner: str, repo: str) -> dict:
     return github_client.get_repository(owner, repo)
+
+
+def get_issue(
+    owner: str,
+    repo: str,
+    issue_number: int,
+) -> GitHubIssue:
+    request = GitHubIssueRequest(
+        owner=owner,
+        repo=repo,
+        issue_number=issue_number,
+    )
+
+    result = github_client.get_issue(
+        owner=request.owner,
+        repo=request.repo,
+        issue_number=request.issue_number,
+    )
+
+    return GitHubIssue(**result)
+
 
 def search_issues(
     owner: str,

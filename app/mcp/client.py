@@ -72,5 +72,18 @@ async def main():
             print(search_result)
 
 
+            get_issue_result = await session.call_tool(
+                "github.get_issue",
+                arguments={
+                    "owner": "Dyresty",
+                    "repo": "enterprise-mcp-gateway",
+                    "issue_number": 1,
+                },
+            )
+
+            print("\nGitHub issue:")
+            print(get_issue_result)
+
+
 if __name__ == "__main__":
     asyncio.run(main())

@@ -115,6 +115,35 @@ def register_tools():
         rate_limit_per_minute=30,
     )
 
+    registry.register_tool(
+        name="github.get_issue",
+        description="Retrieve a specific GitHub issue by issue number.",
+        server_name="Enterprise MCP Gateway",
+        input_schema={
+            "type": "object",
+            "properties": {
+                "owner": {
+                    "type": "string"
+                },
+                "repo": {
+                    "type": "string"
+                },
+                "issue_number": {
+                    "type": "integer",
+                    "minimum": 1
+                }
+            },
+            "required": ["owner", "repo", "issue_number"],
+        },
+        output_schema={
+            "type": "object",
+        },
+        required_role="analyst",
+        risk_level="READ",
+        timeout_seconds=10,
+        rate_limit_per_minute=30,
+    )
+
 
     print("Tools registered successfully.")
 
