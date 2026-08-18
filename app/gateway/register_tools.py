@@ -69,6 +69,8 @@ def register_tools():
         risk_level="READ",
         timeout_seconds=10,
         rate_limit_per_minute=30,
+        cache_enabled=True,
+        cache_ttl_seconds=60,
     )
 
     registry.register_tool(
@@ -114,6 +116,8 @@ def register_tools():
         risk_level="READ",
         timeout_seconds=10,
         rate_limit_per_minute=30,
+        cache_enabled=True,
+        cache_ttl_seconds=30,
     )
 
     registry.register_tool(
@@ -143,6 +147,8 @@ def register_tools():
         risk_level="READ",
         timeout_seconds=10,
         rate_limit_per_minute=30,
+        cache_enabled=True,
+        cache_ttl_seconds=60,
     )
 
     registry.register_tool(
@@ -173,6 +179,8 @@ def register_tools():
         risk_level="READ",
         timeout_seconds=10,
         rate_limit_per_minute=30,
+        cache_enabled=True,
+        cache_ttl_seconds=60,
     )
 
     registry.register_tool(
