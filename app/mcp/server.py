@@ -14,20 +14,41 @@ from app.tools.github import (
     delete_issue_comment,
 )
 
+from app.auth.rbac import authorize_tool, AuthorizationError
+
 mcp = FastMCP("Enterprise MCP Gateway")
 
 registry = ToolRegistry()
+CURRENT_USER_ROLE = "developer"
 
+def get_authorized_tool(tool_name: str) -> dict:
+    """
+    Retrieve a registered tool and authorize the current user.
+    """
+
+    tool = registry.get_tool(tool_name)
+
+    if tool is None:
+        raise ValueError(
+            f"Tool '{tool_name}' is not registered or is disabled."
+        )
+
+    try:
+        authorize_tool(
+            user_role=CURRENT_USER_ROLE,
+            tool=tool,
+        )
+    except AuthorizationError as exc:
+        raise ValueError(str(exc)) from exc
+
+    return tool
 
 @mcp.tool(name="add")
 def add_tool(a: int, b: int) -> int:
     """
     Add two integers and return the result.
     """
-    tool = registry.get_tool("add")
-
-    if tool is None:
-        raise ValueError("Tool 'add' is not registered or is disabled.")
+    get_authorized_tool("add")
 
     return add(a, b)
 
@@ -36,10 +57,7 @@ def multiply_tool(a: int, b: int) -> int:
     """
     Multiply two integers and return the result.
     """
-    tool = registry.get_tool("multiply")
-
-    if tool is None:
-        raise ValueError("Tool 'multiply' is not registered or is disabled.")
+    get_authorized_tool("multiply")
 
     return multiply(a, b)
 
@@ -50,12 +68,7 @@ def github_get_repository(owner: str, repo: str) -> dict:
     """
     Retrieve metadata and information about a GitHub repository.
     """
-    tool = registry.get_tool("github.get_repository")
-
-    if tool is None:
-        raise ValueError(
-            "Tool 'github.get_repository' is not registered or is disabled."
-        )
+    get_authorized_tool("github.get_repository")
 
     return get_repository(owner, repo)
 
@@ -69,12 +82,7 @@ def github_get_issue(
     Retrieve a specific GitHub issue by issue number.
     """
 
-    tool = registry.get_tool("github.get_issue")
-
-    if tool is None:
-        raise ValueError(
-            "Tool 'github.get_issue' is not registered or is disabled."
-        )
+    get_authorized_tool("github.get_issue")
 
     return get_issue(
         owner=owner,
@@ -95,12 +103,7 @@ def github_search_issues(
     Search GitHub issues in a repository.
     """
 
-    tool = registry.get_tool("github.search_issues")
-
-    if tool is None:
-        raise ValueError(
-            "Tool 'github.search_issues' is not registered or is disabled."
-        )
+    get_authorized_tool("github.search_issues")
 
     return search_issues(
         owner=owner,
@@ -120,12 +123,7 @@ def github_list_repositories(
     List repositories accessible to the authenticated GitHub account.
     """
 
-    tool = registry.get_tool("github.list_repositories")
-
-    if tool is None:
-        raise ValueError(
-            "Tool 'github.list_repositories' is not registered or is disabled."
-        )
+    get_authorized_tool("github.list_repositories")
 
     return list_repositories(
         page=page,
@@ -143,12 +141,7 @@ def github_create_issue(
     Create a new GitHub issue.
     """
 
-    tool = registry.get_tool("github.create_issue")
-
-    if tool is None:
-        raise ValueError(
-            "Tool 'github.create_issue' is not registered or is disabled."
-        )
+    get_authorized_tool("github.create_issue")
 
     return create_issue(
         owner=owner,
@@ -170,12 +163,7 @@ def github_update_issue(
     Update an existing GitHub issue.
     """
 
-    tool = registry.get_tool("github.update_issue")
-
-    if tool is None:
-        raise ValueError(
-            "Tool 'github.update_issue' is not registered or is disabled."
-        )
+    get_authorized_tool("github.update_issue")
 
     return update_issue(
         owner=owner,
@@ -197,12 +185,7 @@ def github_add_issue_comment(
     Add a comment to a GitHub issue.
     """
 
-    tool = registry.get_tool("github.add_issue_comment")
-
-    if tool is None:
-        raise ValueError(
-            "Tool 'github.add_issue_comment' is not registered or is disabled."
-        )
+    get_authorized_tool("github.add_issue_comment")
 
     return add_issue_comment(
         owner=owner,
@@ -222,12 +205,7 @@ def github_delete_issue_comment(
     Delete a comment from a GitHub issue.
     """
 
-    tool = registry.get_tool("github.delete_issue_comment")
-
-    if tool is None:
-        raise ValueError(
-            "Tool 'github.delete_issue_comment' is not registered or is disabled."
-        )
+    get_authorized_tool("github.delete_issue_comment")
 
     return delete_issue_comment(
         owner=owner,
