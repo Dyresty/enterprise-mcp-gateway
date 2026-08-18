@@ -1,11 +1,15 @@
 import hashlib
 import json
-from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
+from concurrent.futures import (
+    ThreadPoolExecutor,
+    TimeoutError as FutureTimeoutError,
+)
+from datetime import datetime
 
-from app.logging.execution_logger import execution_logger
 from mcp.server.fastmcp import FastMCP
 
 from app.gateway.tool_registry import ToolRegistry
+
 from app.tools.calculator import add, multiply
 
 from app.tools.github import (
@@ -29,9 +33,12 @@ from app.config import settings
 
 from app.cache.redis_cache import RedisCache
 
-from app.rate_limit.limiter import RateLimiter, RateLimitExceeded
+from app.rate_limit.limiter import (
+    RateLimiter,
+    RateLimitExceeded,
+)
 
-from datetime import datetime
+from app.retry.retry import RetryExecutor
 
 from app.audit.execution_logger import ToolExecutionLogger
 
@@ -41,9 +48,19 @@ mcp = FastMCP("Enterprise MCP Gateway")
 registry = ToolRegistry()
 cache = RedisCache()
 rate_limiter = RateLimiter()
+retry_executor = RetryExecutor()
 execution_logger = ToolExecutionLogger()
 
-def build_cache_key(tool_name: str, arguments: dict) -> str:
+
+AUTH_CONTEXT: AuthenticationContext = create_authentication_context(
+    settings.AUTH_USERNAME
+)
+
+
+def build_cache_key(
+    tool_name: str,
+    arguments: dict,
+) -> str:
     payload = json.dumps(
         arguments,
         sort_keys=True,
@@ -56,11 +73,10 @@ def build_cache_key(tool_name: str, arguments: dict) -> str:
 
     return f"mcp:tool:{tool_name}:{argument_hash}"
 
-AUTH_CONTEXT: AuthenticationContext = create_authentication_context(
-    settings.AUTH_USERNAME
-)
 
-def get_authorized_tool(tool_name: str) -> dict:
+def get_authorized_tool(
+    tool_name: str,
+) -> dict:
     """
     Retrieve a registered tool, authorize the current user,
     and enforce its rate limit.
@@ -78,6 +94,7 @@ def get_authorized_tool(tool_name: str) -> dict:
             user_role=AUTH_CONTEXT.user.role,
             tool=tool,
         )
+
     except AuthorizationError as exc:
         raise ValueError(str(exc)) from exc
 
@@ -85,127 +102,80 @@ def get_authorized_tool(tool_name: str) -> dict:
         rate_limiter.check(
             user=AUTH_CONTEXT.user.username,
             tool_name=tool["name"],
-            limit=tool.get("rate_limit_per_minute", 30),
+            limit=tool.get(
+                "rate_limit_per_minute",
+                30,
+            ),
         )
+
     except RateLimitExceeded as exc:
         raise ValueError(str(exc)) from exc
 
     return tool
 
-def execute_with_logging(
-    tool_name: str,
-    execute_function,
-):
-    user = AUTH_CONTEXT.user
-
-    started_at = datetime.now()
-
-    try:
-        result = execute_function()
-
-        completed_at = datetime.now()
-
-        duration_ms = int(
-            (completed_at - started_at).total_seconds() * 1000
-        )
-
-        execution_logger.log_execution(
-            tool_name=tool_name,
-            user_id=user.user_id,
-            username=user.username,
-            user_role=user.role,
-            status="SUCCESS",
-            started_at=started_at,
-            completed_at=completed_at,
-            duration_ms=duration_ms,
-        )
-
-        return result
-
-    except Exception as exc:
-        completed_at = datetime.now()
-
-        duration_ms = int(
-            (completed_at - started_at).total_seconds() * 1000
-        )
-
-        execution_logger.log_execution(
-            tool_name=tool_name,
-            user_id=user.user_id,
-            username=user.username,
-            user_role=user.role,
-            status="FAILED",
-            started_at=started_at,
-            completed_at=completed_at,
-            duration_ms=duration_ms,
-            error_message=str(exc),
-        )
-
-        raise
 
 def execute_with_timeout(
     tool: dict,
     execute_function,
 ):
-    timeout_seconds = tool.get("timeout_seconds", 10)
+    """
+    Execute a tool with the timeout configured
+    in the tool registry.
+    """
 
-    started_at = datetime.now()
-    user = AUTH_CONTEXT.user
+    timeout_seconds = tool.get(
+        "timeout_seconds",
+        10,
+    )
 
-    try:
-        with ThreadPoolExecutor(max_workers=1) as executor:
-            future = executor.submit(execute_function)
+    with ThreadPoolExecutor(
+        max_workers=1
+    ) as executor:
 
-            try:
-                result = future.result(timeout=timeout_seconds)
-
-            except FutureTimeoutError as exc:
-                future.cancel()
-
-                raise TimeoutError(
-                    f"Tool '{tool['name']}' timed out after "
-                    f"{timeout_seconds} seconds."
-                ) from exc
-
-        completed_at = datetime.now()
-
-        duration_ms = int(
-            (completed_at - started_at).total_seconds() * 1000
+        future = executor.submit(
+            execute_function
         )
 
-        execution_logger.log_execution(
-            tool_name=tool["name"],
-            user_id=user.user_id,
-            username=user.username,
-            user_role=user.role,
-            status="SUCCESS",
-            started_at=started_at,
-            completed_at=completed_at,
-            duration_ms=duration_ms,
-        )
+        try:
+            return future.result(
+                timeout=timeout_seconds
+            )
 
-        return result
+        except FutureTimeoutError as exc:
 
-    except Exception as exc:
-        completed_at = datetime.now()
+            future.cancel()
 
-        duration_ms = int(
-            (completed_at - started_at).total_seconds() * 1000
-        )
+            raise TimeoutError(
+                f"Tool '{tool['name']}' timed out after "
+                f"{timeout_seconds} seconds."
+            ) from exc
 
-        execution_logger.log_execution(
-            tool_name=tool["name"],
-            user_id=user.user_id,
-            username=user.username,
-            user_role=user.role,
-            status="FAILED",
-            started_at=started_at,
-            completed_at=completed_at,
-            duration_ms=duration_ms,
-            error_message=str(exc),
-        )
 
-        raise
+def execute_with_retry(
+    tool: dict,
+    execute_function,
+):
+    """
+    Execute a tool using the retry configuration
+    stored in the tool registry.
+    """
+
+    max_retries = tool.get(
+        "max_retries",
+        0,
+    )
+
+    retry_backoff_seconds = tool.get(
+        "retry_backoff_seconds",
+        0.5,
+    )
+
+    return retry_executor.execute(
+        execute_function,
+        max_retries=max_retries,
+        backoff_seconds=retry_backoff_seconds,
+    )
+
 
 def execute_with_cache(
     tool_name: str,
@@ -215,9 +185,10 @@ def execute_with_cache(
     tool = get_authorized_tool(tool_name)
 
     if not tool["cache_enabled"]:
-        return execute_with_timeout(
-            tool,
-            execute_function,
+        return execute_tool(
+            tool_name=tool_name,
+            arguments=arguments,
+            execute_function=execute_function,
         )
 
     cache_key = build_cache_key(
@@ -230,9 +201,10 @@ def execute_with_cache(
     if cached_result is not None:
         return cached_result
 
-    result = execute_with_timeout(
-        tool,
-        execute_function,
+    result = execute_tool(
+        tool_name=tool_name,
+        arguments=arguments,
+        execute_function=execute_function,
     )
 
     cache.set(
@@ -243,40 +215,206 @@ def execute_with_cache(
 
     return result
 
+
+def log_execution(
+    tool_name: str,
+    status: str,
+    started_at: datetime,
+    completed_at: datetime,
+    error_message: str | None = None,
+):
+    """
+    Write a tool execution audit record.
+    """
+
+    user = AUTH_CONTEXT.user
+
+    duration_ms = int(
+        (
+            completed_at - started_at
+        ).total_seconds()
+        * 1000
+    )
+
+    execution_logger.log_execution(
+        tool_name=tool_name,
+        user_id=user.user_id,
+        username=user.username,
+        user_role=user.role,
+        status=status,
+        started_at=started_at,
+        completed_at=completed_at,
+        duration_ms=duration_ms,
+        error_message=error_message,
+    )
+
+
+def execute_tool(
+    tool_name: str,
+    arguments: dict,
+    execute_function,
+):
+    """
+    Unified enterprise tool execution pipeline.
+
+    Pipeline:
+
+        1. Tool lookup
+        2. Authentication / RBAC
+        3. Rate limiting
+        4. Cache lookup
+        5. Retry
+        6. Timeout
+        7. Tool execution
+        8. Cache write
+        9. Audit logging
+    """
+
+    tool = get_authorized_tool(
+        tool_name
+    )
+
+    started_at = datetime.now()
+
+    try:
+
+        cache_key = None
+
+        if tool.get(
+            "cache_enabled",
+            False,
+        ):
+            cache_key = build_cache_key(
+                tool_name,
+                arguments,
+            )
+
+            cached_result = cache.get(
+                cache_key
+            )
+
+            if cached_result is not None:
+
+                completed_at = datetime.now()
+
+                log_execution(
+                    tool_name=tool_name,
+                    status="SUCCESS",
+                    started_at=started_at,
+                    completed_at=completed_at,
+                )
+
+                return cached_result
+
+        def execute():
+
+            return execute_with_timeout(
+                tool,
+                execute_function,
+            )
+
+        result = execute_with_retry(
+            tool,
+            execute,
+        )
+
+        if cache_key is not None:
+
+            cache.set(
+                cache_key,
+                result,
+                tool.get(
+                    "cache_ttl_seconds",
+                    60,
+                ),
+            )
+
+        completed_at = datetime.now()
+
+        log_execution(
+            tool_name=tool_name,
+            status="SUCCESS",
+            started_at=started_at,
+            completed_at=completed_at,
+        )
+
+        return result
+
+    except Exception as exc:
+
+        completed_at = datetime.now()
+
+        log_execution(
+            tool_name=tool_name,
+            status="FAILED",
+            started_at=started_at,
+            completed_at=completed_at,
+            error_message=str(exc),
+        )
+
+        raise
+
+
 @mcp.tool(name="add")
-def add_tool(a: int, b: int) -> int:
+def add_tool(
+    a: int,
+    b: int,
+) -> int:
     """
     Add two integers and return the result.
     """
-    get_authorized_tool("add")
 
-    return add(a, b)
+    return execute_tool(
+        tool_name="add",
+        arguments={
+            "a": a,
+            "b": b,
+        },
+        execute_function=lambda: add(
+            a,
+            b,
+        ),
+    )
+
 
 @mcp.tool(name="multiply")
-def multiply_tool(a: int, b: int) -> int:
+def multiply_tool(
+    a: int,
+    b: int,
+) -> int:
     """
     Multiply two integers and return the result.
     """
-    get_authorized_tool("multiply")
 
-    return multiply(a, b)
-
+    return execute_tool(
+        tool_name="multiply",
+        arguments={
+            "a": a,
+            "b": b,
+        },
+        execute_function=lambda: multiply(
+            a,
+            b,
+        ),
+    )
 
 
 @mcp.tool(name="github.get_repository")
-def github_get_repository(owner: str, repo: str) -> dict:
+def github_get_repository(
+    owner: str,
+    repo: str,
+) -> dict:
     """
-    Retrieve metadata and information about a GitHub repository.
+    Retrieve metadata and information about
+    a GitHub repository.
     """
 
-    arguments = {
-        "owner": owner,
-        "repo": repo,
-    }
-
-    return execute_with_cache(
+    return execute_tool(
         tool_name="github.get_repository",
-        arguments=arguments,
+        arguments={
+            "owner": owner,
+            "repo": repo,
+        },
         execute_function=lambda: get_repository(
             owner=owner,
             repo=repo,
@@ -291,17 +429,23 @@ def github_get_issue(
     issue_number: int,
 ) -> dict:
     """
-    Retrieve a specific GitHub issue by issue number.
+    Retrieve a specific GitHub issue.
     """
 
-    return execute_with_timeout(
-    get_authorized_tool("github.get_issue"),
-    lambda: get_issue(
-        owner=owner,
-        repo=repo,
-        issue_number=issue_number,
-    ),
-)
+    return execute_tool(
+        tool_name="github.get_issue",
+        arguments={
+            "owner": owner,
+            "repo": repo,
+            "issue_number": issue_number,
+        },
+        execute_function=lambda: get_issue(
+            owner=owner,
+            repo=repo,
+            issue_number=issue_number,
+        ),
+    )
+
 
 @mcp.tool(name="github.search_issues")
 def github_search_issues(
@@ -316,16 +460,26 @@ def github_search_issues(
     Search GitHub issues in a repository.
     """
 
-    get_authorized_tool("github.search_issues")
-
-    return search_issues(
-        owner=owner,
-        repo=repo,
-        query=query,
-        state=state,
-        page=page,
-        per_page=per_page,
+    return execute_tool(
+        tool_name="github.search_issues",
+        arguments={
+            "owner": owner,
+            "repo": repo,
+            "query": query,
+            "state": state,
+            "page": page,
+            "per_page": per_page,
+        },
+        execute_function=lambda: search_issues(
+            owner=owner,
+            repo=repo,
+            query=query,
+            state=state,
+            page=page,
+            per_page=per_page,
+        ),
     )
+
 
 @mcp.tool(name="github.list_repositories")
 def github_list_repositories(
@@ -333,15 +487,22 @@ def github_list_repositories(
     per_page: int = 30,
 ) -> dict:
     """
-    List repositories accessible to the authenticated GitHub account.
+    List repositories accessible to the
+    authenticated GitHub account.
     """
 
-    get_authorized_tool("github.list_repositories")
-
-    return list_repositories(
-        page=page,
-        per_page=per_page,
+    return execute_tool(
+        tool_name="github.list_repositories",
+        arguments={
+            "page": page,
+            "per_page": per_page,
+        },
+        execute_function=lambda: list_repositories(
+            page=page,
+            per_page=per_page,
+        ),
     )
+
 
 @mcp.tool(name="github.create_issue")
 def github_create_issue(
@@ -354,14 +515,22 @@ def github_create_issue(
     Create a new GitHub issue.
     """
 
-    get_authorized_tool("github.create_issue")
-
-    return create_issue(
-        owner=owner,
-        repo=repo,
-        title=title,
-        body=body,
+    return execute_tool(
+        tool_name="github.create_issue",
+        arguments={
+            "owner": owner,
+            "repo": repo,
+            "title": title,
+            "body": body,
+        },
+        execute_function=lambda: create_issue(
+            owner=owner,
+            repo=repo,
+            title=title,
+            body=body,
+        ),
     )
+
 
 @mcp.tool(name="github.update_issue")
 def github_update_issue(
@@ -376,16 +545,26 @@ def github_update_issue(
     Update an existing GitHub issue.
     """
 
-    get_authorized_tool("github.update_issue")
-
-    return update_issue(
-        owner=owner,
-        repo=repo,
-        issue_number=issue_number,
-        title=title,
-        body=body,
-        state=state,
+    return execute_tool(
+        tool_name="github.update_issue",
+        arguments={
+            "owner": owner,
+            "repo": repo,
+            "issue_number": issue_number,
+            "title": title,
+            "body": body,
+            "state": state,
+        },
+        execute_function=lambda: update_issue(
+            owner=owner,
+            repo=repo,
+            issue_number=issue_number,
+            title=title,
+            body=body,
+            state=state,
+        ),
     )
+
 
 @mcp.tool(name="github.add_issue_comment")
 def github_add_issue_comment(
@@ -398,14 +577,22 @@ def github_add_issue_comment(
     Add a comment to a GitHub issue.
     """
 
-    get_authorized_tool("github.add_issue_comment")
-
-    return add_issue_comment(
-        owner=owner,
-        repo=repo,
-        issue_number=issue_number,
-        body=body,
+    return execute_tool(
+        tool_name="github.add_issue_comment",
+        arguments={
+            "owner": owner,
+            "repo": repo,
+            "issue_number": issue_number,
+            "body": body,
+        },
+        execute_function=lambda: add_issue_comment(
+            owner=owner,
+            repo=repo,
+            issue_number=issue_number,
+            body=body,
+        ),
     )
+
 
 @mcp.tool(name="github.delete_issue_comment")
 def github_delete_issue_comment(
@@ -418,14 +605,22 @@ def github_delete_issue_comment(
     Delete a comment from a GitHub issue.
     """
 
-    get_authorized_tool("github.delete_issue_comment")
-
-    return delete_issue_comment(
-        owner=owner,
-        repo=repo,
-        issue_number=issue_number,
-        comment_id=comment_id,
+    return execute_tool(
+        tool_name="github.delete_issue_comment",
+        arguments={
+            "owner": owner,
+            "repo": repo,
+            "issue_number": issue_number,
+            "comment_id": comment_id,
+        },
+        execute_function=lambda: delete_issue_comment(
+            owner=owner,
+            repo=repo,
+            issue_number=issue_number,
+            comment_id=comment_id,
+        ),
     )
+
 
 if __name__ == "__main__":
     mcp.run()

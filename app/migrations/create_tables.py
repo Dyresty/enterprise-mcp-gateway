@@ -12,6 +12,8 @@ CREATE TABLE IF NOT EXISTS tool_registry (
     required_role VARCHAR(100) NOT NULL DEFAULT 'analyst',
     risk_level VARCHAR(50) NOT NULL DEFAULT 'READ',
     timeout_seconds INTEGER NOT NULL DEFAULT 10,
+    max_retries INTEGER NOT NULL DEFAULT 0,
+    retry_backoff_seconds DOUBLE PRECISION NOT NULL DEFAULT 0.5,
     rate_limit_per_minute INTEGER NOT NULL DEFAULT 30,
     cache_enabled BOOLEAN NOT NULL DEFAULT FALSE,
     cache_ttl_seconds INTEGER NOT NULL DEFAULT 60,

@@ -20,6 +20,8 @@ class ToolRegistry:
         rate_limit_per_minute: int = 30,
         cache_enabled: bool = False,
         cache_ttl_seconds: int = 60,
+        max_retries: int = 0,
+        retry_backoff_seconds: float = 0.5,
     ) -> None:
 
         query = """
@@ -34,10 +36,12 @@ class ToolRegistry:
             timeout_seconds,
             rate_limit_per_minute,
             cache_enabled,
-            cache_ttl_seconds
+            cache_ttl_seconds,
+            max_retries,
+            retry_backoff_seconds
         )
         VALUES (
-            %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
+            %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
         )
         ON CONFLICT (name)
         DO UPDATE SET
@@ -51,6 +55,8 @@ class ToolRegistry:
             rate_limit_per_minute = EXCLUDED.rate_limit_per_minute,
             cache_enabled = EXCLUDED.cache_enabled,
             cache_ttl_seconds = EXCLUDED.cache_ttl_seconds,
+            max_retries = EXCLUDED.max_retries,
+            retry_backoff_seconds = EXCLUDED.retry_backoff_seconds,
             updated_at = CURRENT_TIMESTAMP;
         """
 
@@ -74,6 +80,8 @@ class ToolRegistry:
                         rate_limit_per_minute,
                         cache_enabled,
                         cache_ttl_seconds,
+                        max_retries,
+                        retry_backoff_seconds,
                     ),
                 )
 
@@ -94,7 +102,9 @@ class ToolRegistry:
             rate_limit_per_minute,
             enabled,
             cache_enabled,
-            cache_ttl_seconds
+            cache_ttl_seconds,
+            max_retries,
+            retry_backoff_seconds
         FROM tool_registry
         WHERE enabled = TRUE
         ORDER BY name;
@@ -120,6 +130,8 @@ class ToolRegistry:
                 "enabled": row[9],
                 "cache_enabled": row[10],
                 "cache_ttl_seconds": row[11],
+                "max_retries": row[12],
+                "retry_backoff_seconds": row[13],
             }
             for row in rows
         ]
@@ -139,7 +151,9 @@ class ToolRegistry:
             rate_limit_per_minute,
             enabled,
             cache_enabled,
-            cache_ttl_seconds
+            cache_ttl_seconds,
+            max_retries,
+            retry_backoff_seconds
         FROM tool_registry
         WHERE name = %s
           AND enabled = TRUE;
@@ -166,4 +180,6 @@ class ToolRegistry:
             "enabled": row[9],
             "cache_enabled": row[10],
             "cache_ttl_seconds": row[11],
+            "max_retries": row[12],
+            "retry_backoff_seconds": row[13],
         }
