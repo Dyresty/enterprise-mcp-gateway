@@ -74,6 +74,46 @@ class GitHubClient:
             "updated_at": data["updated_at"],
         }
 
+    def create_issue(
+        self,
+        owner: str,
+        repo: str,
+        title: str,
+        body: str | None = None,
+    ) -> dict:
+
+        url = (
+            f"{self.BASE_URL}/repos/"
+            f"{owner}/{repo}/issues"
+        )
+
+        payload = {
+            "title": title,
+        }
+
+        if body is not None:
+            payload["body"] = body
+
+        response = httpx.post(
+            url,
+            headers=self.headers,
+            json=payload,
+            timeout=10.0,
+        )
+
+        response.raise_for_status()
+
+        data = response.json()
+
+        return {
+            "number": data["number"],
+            "title": data["title"],
+            "state": data["state"],
+            "url": data["html_url"],
+            "created_at": data["created_at"],
+            "updated_at": data["updated_at"],
+        }
+
     def search_issues(
         self,
         owner: str,

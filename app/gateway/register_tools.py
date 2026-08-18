@@ -175,6 +175,42 @@ def register_tools():
         rate_limit_per_minute=30,
     )
 
+    registry.register_tool(
+        name="github.create_issue",
+        description="Create a new GitHub issue in a repository.",
+        server_name="Enterprise MCP Gateway",
+        input_schema={
+            "type": "object",
+            "properties": {
+                "owner": {
+                    "type": "string",
+                    "minLength": 1,
+                },
+                "repo": {
+                    "type": "string",
+                    "minLength": 1,
+                },
+                "title": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 256,
+                },
+                "body": {
+                    "type": ["string", "null"],
+                    "maxLength": 10000,
+                },
+            },
+            "required": ["owner", "repo", "title"],
+        },
+        output_schema={
+            "type": "object",
+        },
+        required_role="developer",
+        risk_level="WRITE",
+        timeout_seconds=10,
+        rate_limit_per_minute=10,
+    )
+
     print("Tools registered successfully.")
 
 

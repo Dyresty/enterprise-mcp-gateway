@@ -18,6 +18,11 @@ class GitHubIssueRequest(BaseModel):
     repo: str = Field(min_length=1)
     issue_number: int = Field(ge=1)
 
+class GitHubCreateIssueRequest(BaseModel):
+    owner: str = Field(min_length=1)
+    repo: str = Field(min_length=1)
+    title: str = Field(min_length=1, max_length=256)
+    body: str | None = Field(default=None, max_length=10000)
 
 class GitHubIssue(BaseModel):
     number: int

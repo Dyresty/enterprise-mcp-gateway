@@ -4,6 +4,7 @@ from app.models.github import (
     GitHubIssueSearchRequest,
     GitHubIssueSearchResponse,
     GitHubIssue,
+    GitHubCreateIssueRequest,
     GitHubRepositoryRequest,
     GitHubRepository,
     GitHubRepositoryListRequest,
@@ -95,3 +96,26 @@ def list_repositories(
     )
 
     return GitHubRepositoryListResponse(**result)
+
+def create_issue(
+    owner: str,
+    repo: str,
+    title: str,
+    body: str | None = None,
+) -> GitHubIssue:
+
+    request = GitHubCreateIssueRequest(
+        owner=owner,
+        repo=repo,
+        title=title,
+        body=body,
+    )
+
+    result = github_client.create_issue(
+        owner=request.owner,
+        repo=request.repo,
+        title=request.title,
+        body=request.body,
+    )
+
+    return GitHubIssue(**result)

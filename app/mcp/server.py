@@ -10,6 +10,7 @@ from app.tools.github import (
     get_issue,
     search_issues,
     list_repositories,
+    create_issue,
 )
 
 mcp = FastMCP("Enterprise MCP Gateway")
@@ -128,6 +129,31 @@ def github_list_repositories(
     return list_repositories(
         page=page,
         per_page=per_page,
+    )
+
+@mcp.tool(name="github.create_issue")
+def github_create_issue(
+    owner: str,
+    repo: str,
+    title: str,
+    body: str | None = None,
+) -> dict:
+    """
+    Create a new GitHub issue.
+    """
+
+    tool = registry.get_tool("github.create_issue")
+
+    if tool is None:
+        raise ValueError(
+            "Tool 'github.create_issue' is not registered or is disabled."
+        )
+
+    return create_issue(
+        owner=owner,
+        repo=repo,
+        title=title,
+        body=body,
     )
 
 if __name__ == "__main__":
