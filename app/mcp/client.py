@@ -1,12 +1,14 @@
 import asyncio
+import json
+import os
 
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
-import json
 
 server_params = StdioServerParameters(
     command="python",
     args=["-m", "app.mcp.server"],
+    env=os.environ.copy(),
 )
 
 

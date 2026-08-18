@@ -17,4 +17,7 @@ class Settings:
 
     GITHUB_TOKEN: str = os.getenv("GITHUB_TOKEN", "")
 
+    AUTH_USERNAME: str = os.getenv("AUTH_USERNAME", "analyst")
+
+
 settings = Settings()
