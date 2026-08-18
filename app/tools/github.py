@@ -6,6 +6,8 @@ from app.models.github import (
     GitHubIssue,
     GitHubCreateIssueRequest,
     GitHubUpdateIssueRequest,
+    GitHubAddIssueCommentRequest,
+    GitHubDeleteIssueCommentRequest,
     GitHubRepositoryRequest,
     GitHubRepository,
     GitHubRepositoryListRequest,
@@ -149,3 +151,45 @@ def update_issue(
     )
 
     return GitHubIssue(**result)
+
+def add_issue_comment(
+    owner: str,
+    repo: str,
+    issue_number: int,
+    body: str,
+) -> dict:
+
+    request = GitHubAddIssueCommentRequest(
+        owner=owner,
+        repo=repo,
+        issue_number=issue_number,
+        body=body,
+    )
+
+    return github_client.add_issue_comment(
+        owner=request.owner,
+        repo=request.repo,
+        issue_number=request.issue_number,
+        body=request.body,
+    )
+
+def delete_issue_comment(
+    owner: str,
+    repo: str,
+    issue_number: int,
+    comment_id: int,
+) -> dict:
+
+    request = GitHubDeleteIssueCommentRequest(
+        owner=owner,
+        repo=repo,
+        issue_number=issue_number,
+        comment_id=comment_id,
+    )
+
+    return github_client.delete_issue_comment(
+        owner=request.owner,
+        repo=request.repo,
+        issue_number=request.issue_number,
+        comment_id=request.comment_id,
+    )

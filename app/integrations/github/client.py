@@ -273,3 +273,65 @@ class GitHubClient:
             "created_at": data["created_at"],
             "updated_at": data["updated_at"],
         }
+
+    def add_issue_comment(
+        self,
+        owner: str,
+        repo: str,
+        issue_number: int,
+        body: str,
+    ) -> dict:
+
+        url = (
+            f"{self.BASE_URL}/repos/"
+            f"{owner}/{repo}/issues/{issue_number}/comments"
+        )
+
+        response = httpx.post(
+            url,
+            headers=self.headers,
+            json={
+                "body": body,
+            },
+            timeout=10.0,
+        )
+
+        response.raise_for_status()
+
+        data = response.json()
+
+        return {
+            "id": data["id"],
+            "body": data["body"],
+            "url": data["html_url"],
+            "created_at": data["created_at"],
+            "updated_at": data["updated_at"],
+        }
+
+    def delete_issue_comment(
+        self,
+        owner: str,
+        repo: str,
+        issue_number: int,
+        comment_id: int,
+    ) -> dict:
+        url = (
+            f"{self.BASE_URL}/repos/"
+            f"{owner}/{repo}/issues/comments/{comment_id}"
+        )
+
+        response = httpx.delete(
+            url,
+            headers=self.headers,
+            timeout=10.0,
+        )
+
+        response.raise_for_status()
+
+        return {
+            "comment_id": comment_id,
+            "issue_number": issue_number,
+            "deleted": True,
+        }
+
+    

@@ -33,6 +33,18 @@ class GitHubUpdateIssueRequest(BaseModel):
     body: str | None = None
     state: Literal["open", "closed"] | None = None
 
+class GitHubAddIssueCommentRequest(BaseModel):
+    owner: str = Field(min_length=1)
+    repo: str = Field(min_length=1)
+    issue_number: int = Field(ge=1)
+    body: str = Field(min_length=1)
+
+class GitHubDeleteIssueCommentRequest(BaseModel):
+    owner: str = Field(min_length=1)
+    repo: str = Field(min_length=1)
+    issue_number: int = Field(ge=1)
+    comment_id: int = Field(ge=1)
+
 class GitHubIssue(BaseModel):
     number: int
     title: str

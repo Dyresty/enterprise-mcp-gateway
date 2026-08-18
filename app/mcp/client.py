@@ -2,7 +2,7 @@ import asyncio
 
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
-
+import json
 
 server_params = StdioServerParameters(
     command="python",
@@ -95,6 +95,82 @@ async def main():
             print("\nGitHub repositories:")
             print(list_result)
 
+            create_issue_result = await session.call_tool(
+                "github.create_issue",
+                arguments={
+                    "owner": "Dyresty",
+                    "repo": "enterprise-mcp-gateway",
+                    "title": "MCP client create issue test",
+                    "body": "Testing github.create_issue through the MCP client.",
+                },
+            )
+
+            print("\nGitHub created issue:")
+            print(create_issue_result)
+
+            issue_data = json.loads(
+                create_issue_result.content[0].text
+            )
+
+            issue_number = issue_data["number"]
+
+            update_issue_result = await session.call_tool(
+                "github.update_issue",
+                arguments={
+                    "owner": "Dyresty",
+                    "repo": "enterprise-mcp-gateway",
+                    "issue_number": issue_number,
+                    "title": "MCP client updated issue test",
+                },
+            )
+
+            print("\nGitHub updated issue:")
+            print(update_issue_result)
+
+            add_comment_result = await session.call_tool(
+                "github.add_issue_comment",
+                arguments={
+                    "owner": "Dyresty",
+                    "repo": "enterprise-mcp-gateway",
+                    "issue_number": issue_number,
+                    "body": "Testing github.add_issue_comment through the MCP client.",
+                },
+            )
+
+            print("\nGitHub added issue comment:")
+            print(add_comment_result)
+
+            comment_data = json.loads(
+                add_comment_result.content[0].text
+            )
+
+            comment_id = comment_data["id"]
+
+            delete_comment_result = await session.call_tool(
+                "github.delete_issue_comment",
+                arguments={
+                    "owner": "Dyresty",
+                    "repo": "enterprise-mcp-gateway",
+                    "issue_number": issue_number,
+                    "comment_id": comment_id,
+                },
+            )
+
+            print("\nGitHub deleted issue comment:")
+            print(delete_comment_result)
+
+            close_issue_result = await session.call_tool(
+                "github.update_issue",
+                arguments={
+                    "owner": "Dyresty",
+                    "repo": "enterprise-mcp-gateway",
+                    "issue_number": issue_number,
+                    "state": "closed",
+                },
+            )
+
+            print("\nGitHub closed test issue:")
+            print(close_issue_result)
 
 if __name__ == "__main__":
     asyncio.run(main())

@@ -1,5 +1,3 @@
-from flask import app
-
 from mcp.server.fastmcp import FastMCP
 
 from app.gateway.tool_registry import ToolRegistry
@@ -11,6 +9,9 @@ from app.tools.github import (
     search_issues,
     list_repositories,
     create_issue,
+    update_issue,
+    add_issue_comment,
+    delete_issue_comment,
 )
 
 mcp = FastMCP("Enterprise MCP Gateway")
@@ -183,6 +184,56 @@ def github_update_issue(
         title=title,
         body=body,
         state=state,
+    )
+
+@mcp.tool(name="github.add_issue_comment")
+def github_add_issue_comment(
+    owner: str,
+    repo: str,
+    issue_number: int,
+    body: str,
+) -> dict:
+    """
+    Add a comment to a GitHub issue.
+    """
+
+    tool = registry.get_tool("github.add_issue_comment")
+
+    if tool is None:
+        raise ValueError(
+            "Tool 'github.add_issue_comment' is not registered or is disabled."
+        )
+
+    return add_issue_comment(
+        owner=owner,
+        repo=repo,
+        issue_number=issue_number,
+        body=body,
+    )
+
+@mcp.tool(name="github.delete_issue_comment")
+def github_delete_issue_comment(
+    owner: str,
+    repo: str,
+    issue_number: int,
+    comment_id: int,
+) -> dict:
+    """
+    Delete a comment from a GitHub issue.
+    """
+
+    tool = registry.get_tool("github.delete_issue_comment")
+
+    if tool is None:
+        raise ValueError(
+            "Tool 'github.delete_issue_comment' is not registered or is disabled."
+        )
+
+    return delete_issue_comment(
+        owner=owner,
+        repo=repo,
+        issue_number=issue_number,
+        comment_id=comment_id,
     )
 
 if __name__ == "__main__":

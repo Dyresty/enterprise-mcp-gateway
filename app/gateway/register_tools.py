@@ -255,6 +255,77 @@ def register_tools():
         rate_limit_per_minute=10,
     )
 
+    registry.register_tool(
+        name="github.add_issue_comment",
+        description="Add a comment to an existing GitHub issue.",
+        server_name="Enterprise MCP Gateway",
+        input_schema={
+            "type": "object",
+            "properties": {
+                "owner": {
+                    "type": "string"
+                },
+                "repo": {
+                    "type": "string"
+                },
+                "issue_number": {
+                    "type": "integer",
+                    "minimum": 1
+                },
+                "body": {
+                    "type": "string",
+                    "minLength": 1
+                }
+            },
+            "required": ["owner", "repo", "issue_number", "body"],
+        },
+        output_schema={
+            "type": "object"
+        },
+        required_role="developer",
+        risk_level="WRITE",
+        timeout_seconds=10,
+        rate_limit_per_minute=10,
+    )
+
+    registry.register_tool(
+        name="github.delete_issue_comment",
+        description="Delete a comment from a GitHub issue.",
+        server_name="Enterprise MCP Gateway",
+        input_schema={
+            "type": "object",
+            "properties": {
+                "owner": {
+                    "type": "string"
+                },
+                "repo": {
+                    "type": "string"
+                },
+                "issue_number": {
+                    "type": "integer",
+                    "minimum": 1
+                },
+                "comment_id": {
+                    "type": "integer",
+                    "minimum": 1
+                }
+            },
+            "required": [
+                "owner",
+                "repo",
+                "issue_number",
+                "comment_id"
+            ],
+        },
+        output_schema={
+            "type": "object"
+        },
+        required_role="developer",
+        risk_level="WRITE",
+        timeout_seconds=10,
+        rate_limit_per_minute=10,
+    )
+
     print("Tools registered successfully.")
 
 
