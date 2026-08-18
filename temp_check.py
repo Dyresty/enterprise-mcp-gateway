@@ -1,19 +1,21 @@
 from app.database import get_connection
 
-c = get_connection()
-cur = c.cursor()
 
-cur.execute("""
+connection = get_connection()
+cursor = connection.cursor()
+
+cursor.execute("""
     SELECT
-        name,
-        risk_level,
-        cache_enabled,
-        cache_ttl_seconds
-    FROM tool_registry
-    ORDER BY name;
+        column_name,
+        data_type,
+        column_default
+    FROM information_schema.columns
+    WHERE table_name = 'tool_execution_logs'
+    ORDER BY ordinal_position;
 """)
 
-for row in cur.fetchall():
+for row in cursor.fetchall():
     print(row)
 
-c.close()
+cursor.close()
+connection.close()

@@ -2,6 +2,7 @@ import hashlib
 import json
 from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
 
+from app.logging.execution_logger import execution_logger
 from mcp.server.fastmcp import FastMCP
 
 from app.gateway.tool_registry import ToolRegistry
@@ -30,6 +31,9 @@ from app.cache.redis_cache import RedisCache
 
 from app.rate_limit.limiter import RateLimiter, RateLimitExceeded
 
+from datetime import datetime
+
+from app.audit.execution_logger import ToolExecutionLogger
 
 
 mcp = FastMCP("Enterprise MCP Gateway")
@@ -37,6 +41,7 @@ mcp = FastMCP("Enterprise MCP Gateway")
 registry = ToolRegistry()
 cache = RedisCache()
 rate_limiter = RateLimiter()
+execution_logger = ToolExecutionLogger()
 
 def build_cache_key(tool_name: str, arguments: dict) -> str:
     payload = json.dumps(
@@ -87,25 +92,120 @@ def get_authorized_tool(tool_name: str) -> dict:
 
     return tool
 
+def execute_with_logging(
+    tool_name: str,
+    execute_function,
+):
+    user = AUTH_CONTEXT.user
+
+    started_at = datetime.now()
+
+    try:
+        result = execute_function()
+
+        completed_at = datetime.now()
+
+        duration_ms = int(
+            (completed_at - started_at).total_seconds() * 1000
+        )
+
+        execution_logger.log_execution(
+            tool_name=tool_name,
+            user_id=user.user_id,
+            username=user.username,
+            user_role=user.role,
+            status="SUCCESS",
+            started_at=started_at,
+            completed_at=completed_at,
+            duration_ms=duration_ms,
+        )
+
+        return result
+
+    except Exception as exc:
+        completed_at = datetime.now()
+
+        duration_ms = int(
+            (completed_at - started_at).total_seconds() * 1000
+        )
+
+        execution_logger.log_execution(
+            tool_name=tool_name,
+            user_id=user.user_id,
+            username=user.username,
+            user_role=user.role,
+            status="FAILED",
+            started_at=started_at,
+            completed_at=completed_at,
+            duration_ms=duration_ms,
+            error_message=str(exc),
+        )
+
+        raise
+
 def execute_with_timeout(
     tool: dict,
     execute_function,
 ):
-    timeout_seconds = tool["timeout_seconds"]
+    timeout_seconds = tool.get("timeout_seconds", 10)
 
-    with ThreadPoolExecutor(max_workers=1) as executor:
-        future = executor.submit(execute_function)
+    started_at = datetime.now()
+    user = AUTH_CONTEXT.user
 
-        try:
-            return future.result(timeout=timeout_seconds)
+    try:
+        with ThreadPoolExecutor(max_workers=1) as executor:
+            future = executor.submit(execute_function)
 
-        except FutureTimeoutError as exc:
-            future.cancel()
+            try:
+                result = future.result(timeout=timeout_seconds)
 
-            raise TimeoutError(
-                f"Tool '{tool['name']}' timed out after "
-                f"{timeout_seconds} seconds."
-            ) from exc
+            except FutureTimeoutError as exc:
+                future.cancel()
+
+                raise TimeoutError(
+                    f"Tool '{tool['name']}' timed out after "
+                    f"{timeout_seconds} seconds."
+                ) from exc
+
+        completed_at = datetime.now()
+
+        duration_ms = int(
+            (completed_at - started_at).total_seconds() * 1000
+        )
+
+        execution_logger.log_execution(
+            tool_name=tool["name"],
+            user_id=user.user_id,
+            username=user.username,
+            user_role=user.role,
+            status="SUCCESS",
+            started_at=started_at,
+            completed_at=completed_at,
+            duration_ms=duration_ms,
+        )
+
+        return result
+
+    except Exception as exc:
+        completed_at = datetime.now()
+
+        duration_ms = int(
+            (completed_at - started_at).total_seconds() * 1000
+        )
+
+        execution_logger.log_execution(
+            tool_name=tool["name"],
+            user_id=user.user_id,
+            username=user.username,
+            user_role=user.role,
+            status="FAILED",
+            started_at=started_at,
+            completed_at=completed_at,
+            duration_ms=duration_ms,
+            error_message=str(exc),
+        )
+
+        raise
 
 def execute_with_cache(
     tool_name: str,
@@ -115,7 +215,10 @@ def execute_with_cache(
     tool = get_authorized_tool(tool_name)
 
     if not tool["cache_enabled"]:
-        return execute_function()
+        return execute_with_timeout(
+            tool,
+            execute_function,
+        )
 
     cache_key = build_cache_key(
         tool_name,
@@ -127,7 +230,10 @@ def execute_with_cache(
     if cached_result is not None:
         return cached_result
 
-    result = execute_function()
+    result = execute_with_timeout(
+        tool,
+        execute_function,
+    )
 
     cache.set(
         cache_key,
@@ -188,13 +294,14 @@ def github_get_issue(
     Retrieve a specific GitHub issue by issue number.
     """
 
-    get_authorized_tool("github.get_issue")
-
-    return get_issue(
+    return execute_with_timeout(
+    get_authorized_tool("github.get_issue"),
+    lambda: get_issue(
         owner=owner,
         repo=repo,
         issue_number=issue_number,
-    )
+    ),
+)
 
 @mcp.tool(name="github.search_issues")
 def github_search_issues(
