@@ -211,6 +211,50 @@ def register_tools():
         rate_limit_per_minute=10,
     )
 
+    registry.register_tool(
+        name="github.update_issue",
+        description="Update an existing GitHub issue.",
+        server_name="Enterprise MCP Gateway",
+        input_schema={
+            "type": "object",
+            "properties": {
+                "owner": {
+                    "type": "string"
+                },
+                "repo": {
+                    "type": "string"
+                },
+                "issue_number": {
+                    "type": "integer",
+                    "minimum": 1
+                },
+                "title": {
+                    "type": "string",
+                    "minLength": 1
+                },
+                "body": {
+                    "type": "string"
+                },
+                "state": {
+                    "type": "string",
+                    "enum": ["open", "closed"]
+                }
+            },
+            "required": [
+                "owner",
+                "repo",
+                "issue_number"
+            ],
+        },
+        output_schema={
+            "type": "object"
+        },
+        required_role="developer",
+        risk_level="WRITE",
+        timeout_seconds=10,
+        rate_limit_per_minute=10,
+    )
+
     print("Tools registered successfully.")
 
 

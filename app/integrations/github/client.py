@@ -226,3 +226,50 @@ class GitHubClient:
             "page": page,
             "per_page": per_page,
         }
+
+
+    def update_issue(
+        self,
+        owner: str,
+        repo: str,
+        issue_number: int,
+        title: str | None = None,
+        body: str | None = None,
+        state: str | None = None,
+    ) -> dict:
+
+        url = (
+            f"{self.BASE_URL}/repos/"
+            f"{owner}/{repo}/issues/{issue_number}"
+        )
+
+        payload = {}
+
+        if title is not None:
+            payload["title"] = title
+
+        if body is not None:
+            payload["body"] = body
+
+        if state is not None:
+            payload["state"] = state
+
+        response = httpx.patch(
+            url,
+            headers=self.headers,
+            json=payload,
+            timeout=10.0,
+        )
+
+        response.raise_for_status()
+
+        data = response.json()
+
+        return {
+            "number": data["number"],
+            "title": data["title"],
+            "state": data["state"],
+            "url": data["html_url"],
+            "created_at": data["created_at"],
+            "updated_at": data["updated_at"],
+        }

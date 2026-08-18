@@ -156,5 +156,34 @@ def github_create_issue(
         body=body,
     )
 
+@mcp.tool(name="github.update_issue")
+def github_update_issue(
+    owner: str,
+    repo: str,
+    issue_number: int,
+    title: str | None = None,
+    body: str | None = None,
+    state: str | None = None,
+) -> dict:
+    """
+    Update an existing GitHub issue.
+    """
+
+    tool = registry.get_tool("github.update_issue")
+
+    if tool is None:
+        raise ValueError(
+            "Tool 'github.update_issue' is not registered or is disabled."
+        )
+
+    return update_issue(
+        owner=owner,
+        repo=repo,
+        issue_number=issue_number,
+        title=title,
+        body=body,
+        state=state,
+    )
+
 if __name__ == "__main__":
     mcp.run()

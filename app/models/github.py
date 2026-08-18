@@ -24,6 +24,15 @@ class GitHubCreateIssueRequest(BaseModel):
     title: str = Field(min_length=1, max_length=256)
     body: str | None = Field(default=None, max_length=10000)
 
+class GitHubUpdateIssueRequest(BaseModel):
+    owner: str = Field(min_length=1)
+    repo: str = Field(min_length=1)
+    issue_number: int = Field(ge=1)
+
+    title: str | None = Field(default=None, min_length=1)
+    body: str | None = None
+    state: Literal["open", "closed"] | None = None
+
 class GitHubIssue(BaseModel):
     number: int
     title: str
@@ -31,7 +40,6 @@ class GitHubIssue(BaseModel):
     url: str
     created_at: str
     updated_at: str
-
 
 class GitHubIssueSearchResponse(BaseModel):
     total_count: int
