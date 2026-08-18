@@ -1,5 +1,7 @@
 from typing import Any
+
 from psycopg.types.json import Jsonb
+
 from app.database import get_connection
 
 
@@ -16,6 +18,8 @@ class ToolRegistry:
         risk_level: str = "READ",
         timeout_seconds: int = 10,
         rate_limit_per_minute: int = 30,
+        cache_enabled: bool = False,
+        cache_ttl_seconds: int = 60,
     ) -> None:
 
         query = """
@@ -28,10 +32,12 @@ class ToolRegistry:
             required_role,
             risk_level,
             timeout_seconds,
-            rate_limit_per_minute
+            rate_limit_per_minute,
+            cache_enabled,
+            cache_ttl_seconds
         )
         VALUES (
-            %s, %s, %s, %s, %s, %s, %s, %s, %s
+            %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s
         )
         ON CONFLICT (name)
         DO UPDATE SET
@@ -43,6 +49,8 @@ class ToolRegistry:
             risk_level = EXCLUDED.risk_level,
             timeout_seconds = EXCLUDED.timeout_seconds,
             rate_limit_per_minute = EXCLUDED.rate_limit_per_minute,
+            cache_enabled = EXCLUDED.cache_enabled,
+            cache_ttl_seconds = EXCLUDED.cache_ttl_seconds,
             updated_at = CURRENT_TIMESTAMP;
         """
 
@@ -54,12 +62,18 @@ class ToolRegistry:
                         name,
                         description,
                         server_name,
-                        Jsonb(input_schema) if input_schema is not None else None,
-                        Jsonb(output_schema) if output_schema is not None else None,
+                        Jsonb(input_schema)
+                        if input_schema is not None
+                        else None,
+                        Jsonb(output_schema)
+                        if output_schema is not None
+                        else None,
                         required_role,
                         risk_level,
                         timeout_seconds,
                         rate_limit_per_minute,
+                        cache_enabled,
+                        cache_ttl_seconds,
                     ),
                 )
 
@@ -78,7 +92,9 @@ class ToolRegistry:
             risk_level,
             timeout_seconds,
             rate_limit_per_minute,
-            enabled
+            enabled,
+            cache_enabled,
+            cache_ttl_seconds
         FROM tool_registry
         WHERE enabled = TRUE
         ORDER BY name;
@@ -102,6 +118,8 @@ class ToolRegistry:
                 "timeout_seconds": row[7],
                 "rate_limit_per_minute": row[8],
                 "enabled": row[9],
+                "cache_enabled": row[10],
+                "cache_ttl_seconds": row[11],
             }
             for row in rows
         ]
@@ -119,7 +137,9 @@ class ToolRegistry:
             risk_level,
             timeout_seconds,
             rate_limit_per_minute,
-            enabled
+            enabled,
+            cache_enabled,
+            cache_ttl_seconds
         FROM tool_registry
         WHERE name = %s
           AND enabled = TRUE;
@@ -144,4 +164,6 @@ class ToolRegistry:
             "timeout_seconds": row[7],
             "rate_limit_per_minute": row[8],
             "enabled": row[9],
+            "cache_enabled": row[10],
+            "cache_ttl_seconds": row[11],
         }

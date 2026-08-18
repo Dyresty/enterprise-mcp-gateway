@@ -6,3 +6,5 @@ python-dotenv
 httpx
 pydantic
 flask
+pytest
+redis
