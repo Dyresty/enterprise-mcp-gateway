@@ -15,7 +15,10 @@ from app.tools.github import (
 )
 
 from app.auth.rbac import authorize_tool, AuthorizationError
-from app.auth.authentication import authenticate, AuthenticatedUser
+from app.auth.authentication import (
+    AuthenticationContext,
+    create_authentication_context,
+)
 
 from app.config import settings
 
@@ -23,7 +26,9 @@ mcp = FastMCP("Enterprise MCP Gateway")
 
 registry = ToolRegistry()
 
-CURRENT_USER: AuthenticatedUser = authenticate(settings.AUTH_USERNAME)
+AUTH_CONTEXT: AuthenticationContext = create_authentication_context(
+    settings.AUTH_USERNAME
+)
 
 def get_authorized_tool(tool_name: str) -> dict:
     """
@@ -39,7 +44,7 @@ def get_authorized_tool(tool_name: str) -> dict:
 
     try:
         authorize_tool(
-            user_role=CURRENT_USER.role,
+            user_role=AUTH_CONTEXT.user.role,
             tool=tool,
         )
     except AuthorizationError as exc:

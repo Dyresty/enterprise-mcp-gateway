@@ -12,6 +12,15 @@ class AuthenticatedUser:
     role: str
 
 
+@dataclass(frozen=True)
+class AuthenticationContext:
+    """
+    Represents the authenticated identity for the current execution context.
+    """
+
+    user: AuthenticatedUser
+
+
 # Temporary development users.
 # These will later be replaced by a real authentication backend.
 USERS = {
@@ -49,3 +58,15 @@ def authenticate(username: str) -> AuthenticatedUser:
         )
 
     return user
+
+
+def create_authentication_context(
+    username: str,
+) -> AuthenticationContext:
+    """
+    Authenticate a user and create an authentication context.
+    """
+
+    user = authenticate(username)
+
+    return AuthenticationContext(user=user)
