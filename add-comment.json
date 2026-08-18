@@ -1,0 +1,14 @@
+{
+  "jsonrpc": "2.0",
+  "id": 7,
+  "method": "tools/call",
+  "params": {
+    "name": "github.add_issue_comment",
+    "arguments": {
+      "owner": "Dyresty",
+      "repo": "enterprise-mcp-gateway",
+      "issue_number": 11,
+      "body": "This comment was added through the Enterprise MCP Gateway using the developer role."
+    }
+  }
+}

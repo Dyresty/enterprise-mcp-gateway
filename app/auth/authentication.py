@@ -1,24 +1,16 @@
-from dataclasses import dataclass
+from app.auth.models import (
+    AuthenticatedUser,
+    AuthenticationContext,
+)
+
+from app.auth.jwt import (
+    JWTAuthenticationError,
+    decode_access_token,
+)
 
 
 class AuthenticationError(Exception):
     """Raised when authentication fails."""
-
-
-@dataclass(frozen=True)
-class AuthenticatedUser:
-    user_id: str
-    username: str
-    role: str
-
-
-@dataclass(frozen=True)
-class AuthenticationContext:
-    """
-    Represents the authenticated identity for the current execution context.
-    """
-
-    user: AuthenticatedUser
 
 
 # Temporary development users.
@@ -44,10 +36,11 @@ USERS = {
 
 def authenticate(username: str) -> AuthenticatedUser:
     """
-    Authenticate a user and return the authenticated identity.
+    Authenticate a user by username.
 
     Raises:
-        AuthenticationError: If the user does not exist.
+        AuthenticationError:
+            If the user does not exist.
     """
 
     user = USERS.get(username)
@@ -64,9 +57,27 @@ def create_authentication_context(
     username: str,
 ) -> AuthenticationContext:
     """
-    Authenticate a user and create an authentication context.
+    Authenticate a user by username and create an authentication context.
     """
 
     user = authenticate(username)
+
+    return AuthenticationContext(user=user)
+
+
+def create_authentication_context_from_token(
+    token: str,
+) -> AuthenticationContext:
+    """
+    Authenticate a user using a JWT access token.
+    """
+
+    try:
+        user = decode_access_token(token)
+
+    except JWTAuthenticationError as exc:
+        raise AuthenticationError(
+            str(exc)
+        ) from exc
 
     return AuthenticationContext(user=user)

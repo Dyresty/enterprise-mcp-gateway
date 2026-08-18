@@ -1,0 +1,16 @@
+{
+  "jsonrpc": "2.0",
+  "id": 6,
+  "method": "tools/call",
+  "params": {
+    "name": "github.update_issue",
+    "arguments": {
+      "owner": "Dyresty",
+      "repo": "enterprise-mcp-gateway",
+      "issue_number": 11,
+      "title": "Updated through Enterprise MCP Gateway",
+      "body": "This issue was updated through the Enterprise MCP Gateway using the developer role.",
+      "state": "open"
+    }
+  }
+}

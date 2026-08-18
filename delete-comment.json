@@ -1,0 +1,14 @@
+{
+  "jsonrpc": "2.0",
+  "id": 8,
+  "method": "tools/call",
+  "params": {
+    "name": "github.delete_issue_comment",
+    "arguments": {
+      "owner": "Dyresty",
+      "repo": "enterprise-mcp-gateway",
+      "issue_number": 11,
+      "comment_id": 5328724658
+    }
+  }
+}

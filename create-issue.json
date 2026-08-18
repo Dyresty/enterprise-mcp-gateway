@@ -1,0 +1,14 @@
+{
+  "jsonrpc": "2.0",
+  "id": 5,
+  "method": "tools/call",
+  "params": {
+    "name": "github.create_issue",
+    "arguments": {
+      "owner": "Dyresty",
+      "repo": "enterprise-mcp-gateway",
+      "title": "Test issue created through Enterprise MCP Gateway",
+      "body": "This issue was created through the MCP gateway to validate authenticated GitHub WRITE access."
+    }
+  }
+}

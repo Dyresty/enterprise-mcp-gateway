@@ -6,6 +6,8 @@ from concurrent.futures import (
 )
 from datetime import datetime
 
+from pydantic import BaseModel
+
 from mcp.server.fastmcp import FastMCP
 
 from app.gateway.tool_registry import ToolRegistry
@@ -26,7 +28,9 @@ from app.tools.github import (
 from app.auth.rbac import authorize_tool, AuthorizationError
 from app.auth.authentication import (
     AuthenticationContext,
+    AuthenticationError,
     create_authentication_context,
+    create_authentication_context_from_token,
 )
 
 from app.config import settings
@@ -42,8 +46,22 @@ from app.retry.retry import RetryExecutor
 
 from app.audit.execution_logger import ToolExecutionLogger
 
+from mcp.server.auth.settings import AuthSettings
+from app.auth.mcp_token_verifier import MCPJWTTokenVerifier
 
-mcp = FastMCP("Enterprise MCP Gateway")
+from mcp.server.auth.middleware.auth_context import get_access_token
+
+
+mcp = FastMCP(
+    "Enterprise MCP Gateway",
+    token_verifier=MCPJWTTokenVerifier(),
+    auth=AuthSettings(
+        issuer_url="http://127.0.0.1:8000",
+        resource_server_url="http://127.0.0.1:8000/mcp",
+        required_scopes=[],
+    ),
+    streamable_http_path="/",
+)
 
 registry = ToolRegistry()
 cache = RedisCache()
@@ -56,6 +74,40 @@ AUTH_CONTEXT: AuthenticationContext = create_authentication_context(
     settings.AUTH_USERNAME
 )
 
+def authenticate_request(
+    token: str | None = None,
+) -> AuthenticationContext:
+    """
+    Authenticate an incoming request.
+
+    If a JWT bearer token is provided, authenticate using the token.
+    Otherwise, fall back to the configured development user.
+
+    The development fallback is temporary and should be removed
+    once the MCP transport exposes request authentication.
+    """
+
+    if token is None:
+        return create_authentication_context(
+            settings.AUTH_USERNAME
+        )
+
+    try:
+        return create_authentication_context_from_token(token)
+
+    except AuthenticationError as exc:
+        raise ValueError(str(exc)) from exc
+
+def set_authentication_context(
+    context: AuthenticationContext,
+) -> None:
+    """
+    Set the authentication context for the current execution.
+    """
+
+    global AUTH_CONTEXT
+
+    AUTH_CONTEXT = context
 
 def build_cache_key(
     tool_name: str,
@@ -89,9 +141,28 @@ def get_authorized_tool(
             f"Tool '{tool_name}' is not registered or is disabled."
         )
 
+    access_token = get_access_token()
+
+    if access_token is None:
+        raise ValueError(
+            "No authenticated MCP user found."
+        )
+
+    role = access_token.claims.get("role")
+
+    username = access_token.claims.get(
+        "username",
+        access_token.client_id,
+    )
+
+    if not role:
+        raise ValueError(
+            "Authenticated token is missing the user role."
+        )
+
     try:
         authorize_tool(
-            user_role=AUTH_CONTEXT.user.role,
+            user_role=role,
             tool=tool,
         )
 
@@ -100,7 +171,7 @@ def get_authorized_tool(
 
     try:
         rate_limiter.check(
-            user=AUTH_CONTEXT.user.username,
+            user=username,
             tool_name=tool["name"],
             limit=tool.get(
                 "rate_limit_per_minute",
@@ -227,7 +298,19 @@ def log_execution(
     Write a tool execution audit record.
     """
 
-    user = AUTH_CONTEXT.user
+    access_token = get_access_token()
+
+    if access_token is None:
+        raise ValueError(
+            "No authenticated MCP user found."
+        )
+
+    user_id = access_token.subject
+    username = access_token.claims.get(
+        "username",
+        access_token.client_id,
+    )
+    user_role = access_token.claims.get("role")
 
     duration_ms = int(
         (
@@ -238,9 +321,9 @@ def log_execution(
 
     execution_logger.log_execution(
         tool_name=tool_name,
-        user_id=user.user_id,
-        username=user.username,
-        user_role=user.role,
+        user_id=user_id,
+        username=username,
+        user_role=user_role,
         status=status,
         started_at=started_at,
         completed_at=completed_at,
@@ -318,6 +401,9 @@ def execute_tool(
             execute,
         )
 
+        if isinstance(result, BaseModel):
+            result = result.model_dump()
+
         if cache_key is not None:
 
             cache.set(
@@ -337,6 +423,9 @@ def execute_tool(
             started_at=started_at,
             completed_at=completed_at,
         )
+
+        if isinstance(result, BaseModel):
+            return result.model_dump()
 
         return result
 

@@ -19,8 +19,24 @@ class Settings:
 
     AUTH_USERNAME: str = os.getenv("AUTH_USERNAME", "analyst")
 
+    JWT_SECRET_KEY: str = os.getenv(
+        "JWT_SECRET_KEY",
+        "development-only-secret-change-me",
+    )
+    JWT_ALGORITHM: str = os.getenv(
+        "JWT_ALGORITHM",
+        "HS256",
+    )
+    JWT_ACCESS_TOKEN_EXPIRE_MINUTES: int = int(
+        os.getenv(
+            "JWT_ACCESS_TOKEN_EXPIRE_MINUTES",
+            "30",
+        )
+    )
+
     REDIS_HOST: str = os.getenv("REDIS_HOST", "localhost")
     REDIS_PORT: int = int(os.getenv("REDIS_PORT", "6379"))
     REDIS_DB: int = int(os.getenv("REDIS_DB", "0"))
+
 
 settings = Settings()
