@@ -33,6 +33,11 @@ from app.auth.authentication import (
     create_authentication_context_from_token,
 )
 
+from app.integrations.postgres.client import (
+    list_tables,
+    describe_table,
+)
+
 from app.config import settings
 
 from app.cache.redis_cache import RedisCache
@@ -143,22 +148,29 @@ def get_authorized_tool(
 
     access_token = get_access_token()
 
-    if access_token is None:
-        raise ValueError(
-            "No authenticated MCP user found."
+    if access_token is not None:
+        # Real MCP/JWT authentication path.
+        role = access_token.claims.get("role")
+
+        username = access_token.claims.get(
+            "username",
+            access_token.client_id,
         )
 
-    role = access_token.claims.get("role")
+        if not role:
+            raise ValueError(
+                "Authenticated token is missing the user role."
+            )
 
-    username = access_token.claims.get(
-        "username",
-        access_token.client_id,
-    )
+    else:
+        # Development/test authentication context.
+        if AUTH_CONTEXT is None:
+            raise ValueError(
+                "No authenticated MCP user found."
+            )
 
-    if not role:
-        raise ValueError(
-            "Authenticated token is missing the user role."
-        )
+        role = AUTH_CONTEXT.user.role
+        username = AUTH_CONTEXT.user.username
 
     try:
         authorize_tool(
@@ -300,17 +312,25 @@ def log_execution(
 
     access_token = get_access_token()
 
-    if access_token is None:
-        raise ValueError(
-            "No authenticated MCP user found."
+    if access_token is not None:
+        # Real MCP/JWT authentication path.
+        user_id = access_token.subject
+        username = access_token.claims.get(
+            "username",
+            access_token.client_id,
         )
+        user_role = access_token.claims.get("role")
 
-    user_id = access_token.subject
-    username = access_token.claims.get(
-        "username",
-        access_token.client_id,
-    )
-    user_role = access_token.claims.get("role")
+    else:
+        # Development/test authentication context.
+        if AUTH_CONTEXT is None:
+            raise ValueError(
+                "No authenticated MCP user found."
+            )
+
+        user_id = AUTH_CONTEXT.user.user_id
+        username = AUTH_CONTEXT.user.username
+        user_role = AUTH_CONTEXT.user.role
 
     duration_ms = int(
         (
@@ -707,6 +727,44 @@ def github_delete_issue_comment(
             repo=repo,
             issue_number=issue_number,
             comment_id=comment_id,
+        ),
+    )
+
+
+
+
+
+@mcp.tool(name="postgres.list_tables")
+def postgres_list_tables() -> list[dict]:
+    """
+    List user tables available in the PostgreSQL database.
+    """
+
+    return execute_tool(
+        tool_name="postgres.list_tables",
+        arguments={},
+        execute_function=list_tables,
+    )
+
+
+@mcp.tool(name="postgres.describe_table")
+def postgres_describe_table(
+    schema: str,
+    table: str,
+) -> list[dict]:
+    """
+    Describe the columns and metadata of a PostgreSQL table.
+    """
+
+    return execute_tool(
+        tool_name="postgres.describe_table",
+        arguments={
+            "schema": schema,
+            "table": table,
+        },
+        execute_function=lambda: describe_table(
+            schema=schema,
+            table=table,
         ),
     )
 

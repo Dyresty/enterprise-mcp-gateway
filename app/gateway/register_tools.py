@@ -334,7 +334,55 @@ def register_tools():
         rate_limit_per_minute=10,
     )
 
+
+    registry.register_tool(
+        name="postgres.list_tables",
+        description="List user tables available in the PostgreSQL database.",
+        server_name="Enterprise MCP Gateway",
+        input_schema={
+            "type": "object",
+            "properties": {},
+            "required": [],
+        },
+        output_schema={
+            "type": "array",
+        },
+        required_role="analyst",
+        risk_level="READ",
+        timeout_seconds=10,
+        rate_limit_per_minute=30,
+    )
+
+    registry.register_tool(
+        name="postgres.describe_table",
+        description="Describe the columns and metadata of a PostgreSQL table.",
+        server_name="Enterprise MCP Gateway",
+        input_schema={
+            "type": "object",
+            "properties": {
+                "schema": {
+                    "type": "string",
+                    "minLength": 1,
+                },
+                "table": {
+                    "type": "string",
+                    "minLength": 1,
+                },
+            },
+            "required": ["schema", "table"],
+        },
+        output_schema={
+            "type": "array",
+        },
+        required_role="analyst",
+        risk_level="READ",
+        timeout_seconds=10,
+        rate_limit_per_minute=30,
+    )
+
+
     print("Tools registered successfully.")
+
 
 
 if __name__ == "__main__":
