@@ -415,6 +415,54 @@ def register_tools():
         retry_backoff_seconds=1.0,
     )
 
+    filesystem_tools = [
+        (
+            "filesystem.list_files",
+            "List files and folders in the shared document folder.",
+            {
+                "path": {"type": "string"},
+                "pattern": {"type": "string"},
+            },
+            [],
+        ),
+        (
+            "filesystem.read_file",
+            "Read a text file from the shared document folder.",
+            {
+                "path": {"type": "string", "minLength": 1},
+            },
+            ["path"],
+        ),
+        (
+            "filesystem.search_files",
+            "Search text in the shared document folder.",
+            {
+                "query": {"type": "string", "minLength": 2},
+                "path": {"type": "string"},
+            },
+            ["query"],
+        ),
+    ]
+
+    for name, description, properties, required in filesystem_tools:
+        registry.register_tool(
+            name=name,
+            description=description,
+            server_name="Enterprise MCP Gateway",
+            input_schema={
+                "type": "object",
+                "properties": properties,
+                "required": required,
+            },
+            output_schema={
+                "type": "object" if name.endswith("read_file") else "array",
+            },
+            required_role="analyst",
+            risk_level="READ",
+            timeout_seconds=10,
+            rate_limit_per_minute=60,
+        )
+
 
     print("Tools registered successfully.")
 

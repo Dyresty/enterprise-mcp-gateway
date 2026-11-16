@@ -39,6 +39,7 @@ from app.integrations.postgres.client import (
 )
 
 from app.tools.research import search_projects
+from app.tools.filesystem import list_files, read_file, search_files
 
 from app.config import settings
 
@@ -804,6 +805,72 @@ def research_search_projects(
         execute_function=lambda: search_projects(
             query=query,
             top_k=top_k,
+        ),
+    )
+
+
+@mcp.tool(name="filesystem.list_files")
+def filesystem_list_files(
+    path: str = ".",
+    pattern: str = "*",
+) -> list[dict]:
+    """
+    List files and folders in the shared document folder.
+    `path` is relative to that folder; `pattern` is a glob such as "*.md".
+    """
+
+    return execute_tool(
+        tool_name="filesystem.list_files",
+        arguments={
+            "path": path,
+            "pattern": pattern,
+        },
+        execute_function=lambda: list_files(
+            path=path,
+            pattern=pattern,
+        ),
+    )
+
+
+@mcp.tool(name="filesystem.read_file")
+def filesystem_read_file(
+    path: str,
+) -> dict:
+    """
+    Read a text file (Markdown, text, CSV, JSON, YAML, code)
+    from the shared document folder.
+    """
+
+    return execute_tool(
+        tool_name="filesystem.read_file",
+        arguments={
+            "path": path,
+        },
+        execute_function=lambda: read_file(
+            path=path,
+        ),
+    )
+
+
+@mcp.tool(name="filesystem.search_files")
+def filesystem_search_files(
+    query: str,
+    path: str = ".",
+) -> list[dict]:
+    """
+    Case-insensitive text search in the shared document folder.
+    Returns file path, line number and the matching line.
+    """
+
+    return execute_tool(
+        tool_name="filesystem.search_files",
+        arguments={
+            "query": query,
+            "path": path,
+        },
+        execute_function=lambda: search_files(
+            query=query,
+            path=path,
         ),
     )
 

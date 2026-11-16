@@ -41,6 +41,9 @@ class Settings:
     # Research project search (enterprise-hybrid-rag service)
     RAG_API_URL: str = os.getenv("RAG_API_URL", "http://127.0.0.1:8001")
 
+    # File system tools: everything outside this folder is unreachable
+    FILES_ROOT: str = os.getenv("FILES_ROOT", "workspace")
+
     # Agent
     GATEWAY_URL: str = os.getenv("GATEWAY_URL", "http://127.0.0.1:8000")
     LLM_BASE_URL: str | None = os.getenv("LLM_BASE_URL") or None

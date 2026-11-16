@@ -1,10 +1,11 @@
 # Enterprise MCP Tool Gateway & Agent Platform
 
-A secured **Model Context Protocol (MCP)** gateway that gives AI agents controlled access to enterprise tools (GitHub, PostgreSQL and a research-project search engine), plus a **LangGraph** agent that uses it and an **A2A** endpoint so other agents can delegate tasks to that agent.
+A secured **Model Context Protocol (MCP)** gateway that gives AI agents controlled access to enterprise tools (GitHub, PostgreSQL, a sandboxed document folder and a research-project search engine), plus a **LangGraph** agent that uses it and an **A2A** endpoint so other agents can delegate tasks to that agent.
 
 ```
  other agents ──A2A (JSON-RPC)──► Gateway Agent (LangGraph) ──MCP (streamable HTTP + JWT)──► MCP Gateway ──► GitHub API
                                         │                                                       │    ├──► PostgreSQL
+                                        │                                                       │    ├──► document folder (sandbox)
                                         └── Langfuse traces                                     │    └──► Hybrid RAG service
                                                                                                 │         (EU research projects)
                                               JWT auth · RBAC · rate limit · cache · retry · timeout · audit log
@@ -33,6 +34,15 @@ Policies live in the registry, not in code, so a tool can be disabled or rate-li
 | `github.get_repository`, `github.get_issue`, `github.search_issues`, `github.list_repositories` | analyst | READ | |
 | `github.create_issue`, `github.update_issue`, `github.add_issue_comment`, `github.delete_issue_comment` | developer | WRITE | |
 | `postgres.list_tables`, `postgres.describe_table` | analyst | READ | Schema inspection only |
+| `filesystem.list_files`, `filesystem.read_file`, `filesystem.search_files` | analyst | READ | Shared document folder (`FILES_ROOT`, default `workspace/`) |
+
+**File system sandbox.** The file tools can only see one folder:
+- Every path is resolved, symlinks included. Anything that ends up outside the root (`../.env`, absolute paths, symlinks pointing out) is rejected.
+- Directory listings and searches re-check each result.
+- Only text formats are allowed (Markdown, text, CSV, JSON, YAML, code), up to 200 KB per file.
+- There are no write tools for files.
+
+In a live test, the agent was asked to read `../.env`. The call was refused and audited as `FAILED` with the reason `outside the allowed folder`.
 
 ## Agent (LangGraph)
 
@@ -92,7 +102,7 @@ uvicorn app.main:app --port 8000           # MCP gateway at /mcp, login at /auth
 #   uvicorn app.main:app --port 8001   (in the RAG project)
 
 python -m app.agent.cli "List the tables in the gateway database"
-python -m pytest                           # 76 tests
+python -m pytest                           # 84 tests (+1 symlink test that needs admin rights on Windows)
 ```
 
 Raw JSON-RPC request examples for the MCP endpoint are in `examples/jsonrpc/`.
