@@ -380,6 +380,41 @@ def register_tools():
         rate_limit_per_minute=30,
     )
 
+    registry.register_tool(
+        name="research.search_projects",
+        description=(
+            "Search EU-funded Horizon Europe research projects (CORDIS) "
+            "by topic, acronym or grant ID."
+        ),
+        server_name="Enterprise MCP Gateway",
+        input_schema={
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "minLength": 3,
+                },
+                "top_k": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 10,
+                },
+            },
+            "required": ["query"],
+        },
+        output_schema={
+            "type": "array",
+        },
+        required_role="analyst",
+        risk_level="READ",
+        timeout_seconds=30,
+        rate_limit_per_minute=30,
+        cache_enabled=True,
+        cache_ttl_seconds=300,
+        max_retries=1,
+        retry_backoff_seconds=1.0,
+    )
+
 
     print("Tools registered successfully.")
 

@@ -38,6 +38,8 @@ from app.integrations.postgres.client import (
     describe_table,
 )
 
+from app.tools.research import search_projects
+
 from app.config import settings
 
 from app.cache.redis_cache import RedisCache
@@ -373,11 +375,24 @@ def execute_tool(
         9. Audit logging
     """
 
-    tool = get_authorized_tool(
-        tool_name
-    )
-
     started_at = datetime.now()
+
+    try:
+        tool = get_authorized_tool(
+            tool_name
+        )
+
+    except ValueError as exc:
+        # Denied calls (unknown tool, missing role, rate limit) must
+        # appear in the audit trail as well, not only executions.
+        log_execution(
+            tool_name=tool_name,
+            status="DENIED",
+            started_at=started_at,
+            completed_at=datetime.now(),
+            error_message=str(exc),
+        )
+        raise
 
     try:
 
@@ -765,6 +780,30 @@ def postgres_describe_table(
         execute_function=lambda: describe_table(
             schema=schema,
             table=table,
+        ),
+    )
+
+
+@mcp.tool(name="research.search_projects")
+def research_search_projects(
+    query: str,
+    top_k: int = 5,
+) -> list[dict]:
+    """
+    Search EU-funded Horizon Europe research projects (CORDIS)
+    by topic, acronym or grant ID. Returns title, grant ID,
+    CORDIS URL, relevance score and a text excerpt per project.
+    """
+
+    return execute_tool(
+        tool_name="research.search_projects",
+        arguments={
+            "query": query,
+            "top_k": top_k,
+        },
+        execute_function=lambda: search_projects(
+            query=query,
+            top_k=top_k,
         ),
     )
 

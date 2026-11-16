@@ -38,5 +38,17 @@ class Settings:
     REDIS_PORT: int = int(os.getenv("REDIS_PORT", "6379"))
     REDIS_DB: int = int(os.getenv("REDIS_DB", "0"))
 
+    # Research project search (enterprise-hybrid-rag service)
+    RAG_API_URL: str = os.getenv("RAG_API_URL", "http://127.0.0.1:8001")
+
+    # Agent
+    GATEWAY_URL: str = os.getenv("GATEWAY_URL", "http://127.0.0.1:8000")
+    LLM_BASE_URL: str | None = os.getenv("LLM_BASE_URL") or None
+    LLM_MODEL: str = os.getenv("LLM_MODEL", "gpt-4.1-mini")
+    AGENT_MAX_STEPS: int = int(os.getenv("AGENT_MAX_STEPS", "8"))
+
+    # A2A server exposing the agent to other agents
+    A2A_URL: str = os.getenv("A2A_URL", "http://127.0.0.1:9000")
+
 
 settings = Settings()
