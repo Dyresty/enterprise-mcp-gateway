@@ -8,7 +8,7 @@ then send a message over A2A JSON-RPC.
 import argparse
 import asyncio
 
-from a2a.client import create_client
+from a2a.client import ClientCallContext, create_client
 from a2a.helpers.proto_helpers import get_stream_response_text, new_text_message
 from a2a.types import Role, SendMessageRequest
 
@@ -23,7 +23,8 @@ async def ask(question: str) -> str:
     )
 
     parts = []
-    async for response in client.send_message(request):
+    # The agent runs its whole tool loop before replying, so the default 5 s HTTP timeout is too short.
+    async for response in client.send_message(request, context=ClientCallContext(timeout=120)):
         text = get_stream_response_text(response)
         if text:
             parts.append(text)
