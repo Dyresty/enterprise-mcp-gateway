@@ -112,5 +112,3 @@ Raw JSON-RPC request examples for the MCP endpoint are in `examples/jsonrpc/`.
 - `/auth/login` issues tokens for fixed development users without a password. A real deployment would put an identity provider (OIDC/Keycloak) in front.
 - A2A requests are not authenticated yet. The agent card supports security schemes, so OAuth2 between agents is the next step.
 - Human approval for WRITE tools (a LangGraph interrupt before the tools node) is not implemented. Today, write access is controlled by role only.
-
-A detailed walkthrough of every gateway feature (registry, auth, RBAC, rate limiting, caching, retries, audit log, integrations) is in [docs/implementation-notes.md](docs/implementation-notes.md).
